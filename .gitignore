@@ -1,0 +1,22 @@
+# Python virtual environment
+venv/
+env/
+__pycache__/
+*.pyc
+
+# Database & Runtime files
+*.db
+pan_system.db
+instance/
+
+# Uploaded test files (keep the folder structure if needed)
+static/uploads/*
+!static/uploads/.gitkeep
+
+# Datasets (do not upload thousands of images to GitHub)
+raw_dataset/
+dataset/
+
+# Model file (if pan_detector.keras is over 100 MB, GitHub will block it)
+# pan_detector.keras
+pan_detector.keras

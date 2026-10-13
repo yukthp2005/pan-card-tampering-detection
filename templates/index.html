@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | KYC Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+    <!-- Top Navigation -->
+    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <h1 class="text-lg font-semibold text-gray-900">Document Verification Portal</h1>
+        <div class="text-sm text-gray-600">
+            <span class="mr-4">Agent: <strong>{{ user }}</strong></span>
+            <a href="{{ url_for('logout') }}" class="text-blue-600 hover:underline font-medium">Logout</a>
+        </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-5xl w-full mx-auto p-6 mt-4">
+        
+        <!-- Upload Section -->
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <h2 class="text-base font-semibold mb-4">Run New Scan</h2>
+            <form method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-4">
+                <input type="file" name="pan_card" required accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
+                    Analyze Document
+                </button>
+            </form>
+        </div>
+
+        <!-- Results Section -->
+        {% if result %}
+        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
+            <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                <h2 class="text-lg font-semibold">Scan Results: <span class="text-gray-500 font-normal">{{ result.original_image }}</span></h2>
+                <div class="text-right">
+                    {% if result.is_tampered %}
+                        <span class="px-3 py-1 bg-red-100 text-red-800 text-sm font-semibold rounded-full border border-red-200">TAMPERED</span>
+                    {% else %}
+                        <span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full border border-green-200">AUTHENTIC</span>
+                    {% endif %}
+                    <div class="text-sm text-gray-500 mt-1">Confidence: {{ result.confidence }}%</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 mb-2">Original Document</h3>
+                    <img src="{{ url_for('static', filename='uploads/' + result.original_image) }}" alt="Original" class="w-full border border-gray-200 rounded">
+                </div>
+                <div>
+                    <h3 class="text-sm font-medium text-gray-500 mb-2">Grad-CAM Heatmap</h3>
+                    <img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" alt="Heatmap" class="w-full border border-gray-200 rounded">
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- History Table -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                <h3 class="text-sm font-semibold">Recent Scans</h3>
+            </div>
+            <table class="w-full text-left text-sm">
+                <thead class="bg-gray-50 text-gray-500 border-b border-gray-200">
+                    <tr>
+                        <th class="px-6 py-3 font-medium">Date & Time</th>
+                        <th class="px-6 py-3 font-medium">Filename</th>
+                        <th class="px-6 py-3 font-medium">Status</th>
+                        <th class="px-6 py-3 font-medium">Confidence</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-gray-700">
+                    {% for record in history %}
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-3">{{ record.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td class="px-6 py-3 truncate max-w-[200px]" title="{{ record.filename }}">{{ record.filename }}</td>
+                        <td class="px-6 py-3">
+                            {% if record.is_tampered %}
+                                <span class="text-red-600 font-medium">Tampered</span>
+                            {% else %}
+                                <span class="text-green-600 font-medium">Authentic</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-3">{{ record.confidence }}%</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-6 text-center text-gray-500">No scans recorded yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</body>
+</html>
