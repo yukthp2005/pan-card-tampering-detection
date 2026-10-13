@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KYC Forensics Engine | Verification Portal</title>
+    <title>KYC Hybrid Forensics Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = { darkMode: 'class' }
@@ -30,7 +30,7 @@
                 </div>
                 <div>
                     <h1 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight leading-none">KYC Forensics Engine</h1>
-                    <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Automated PAN Card Tampering Detection</span>
+                    <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500">Hybrid VGG16 + ELA Verification Pipeline</span>
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -54,7 +54,6 @@
 
     <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-        <!-- Flash Messages (for zip uploads) -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -85,11 +84,11 @@
             </div>
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
                 <div class="flex items-center justify-between">
-                    <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Authentic Verified</span>
-                    <span class="p-1 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg></span>
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-amber-500 dark:text-amber-400">Manual Review</span>
+                    <span class="p-1 rounded-md bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></span>
                 </div>
-                <div class="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-2">{{ stats.authentic }}</div>
-                <span class="text-[11px] text-slate-500 dark:text-slate-400">Cleared compliance</span>
+                <div class="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-2">{{ stats.review }}</div>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400">Hybrid edge cases</span>
             </div>
             <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs">
                 <div class="flex items-center justify-between">
@@ -97,88 +96,61 @@
                     <span class="p-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg></span>
                 </div>
                 <div class="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400 mt-2">{{ stats.avg_confidence }}%</div>
-                <span class="text-[11px] text-slate-500 dark:text-slate-400">VGG16 model metric</span>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400">System metric</span>
             </div>
         </div>
 
-        <!-- Document Upload Module (Tabbed) -->
+        <!-- Document Upload Module -->
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-xs">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
                 <div>
                     <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white">Run Document Inspection</h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Automated image analysis using VGG16 Transfer Learning</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Dual Analysis: VGG16 Transfer Learning + Error Level Analysis</p>
                 </div>
-                <!-- Tabs -->
                 <div class="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold">
                     <button type="button" onclick="switchUploadMode('single')" id="tab-single" class="px-4 py-1.5 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs">Single Scan</button>
                     <button type="button" onclick="switchUploadMode('batch')" id="tab-batch" class="px-4 py-1.5 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Bulk Batch (ZIP)</button>
                 </div>
             </div>
 
-            <!-- Single Image Upload Form -->
+            <!-- Single Form -->
             <form id="form-single" method="POST" enctype="multipart/form-data" class="space-y-4 block">
                 <div class="relative group border-2 border-dashed border-slate-200 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 bg-slate-50 dark:bg-slate-900/50 hover:bg-indigo-50/20 dark:hover:bg-indigo-900/20 rounded-xl p-6 transition-all text-center">
                     <input id="pan_card" name="pan_card" type="file" required accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'single')">
-                    
                     <div id="upload-prompt-single" class="flex flex-col items-center">
-                        <div class="h-10 w-10 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mb-3 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
-                        </div>
+                        <div class="h-10 w-10 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mb-3 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg></div>
                         <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">Select an Indian PAN Card image</span>
-                        <span class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">JPEG, PNG supported (max 10MB)</span>
                     </div>
-
                     <div id="preview-box-single" class="hidden flex-col items-center justify-center pt-2">
-                        <div class="relative inline-block border border-slate-200 dark:border-slate-600 rounded-lg p-1 bg-white dark:bg-slate-800 shadow-xs">
-                            <img id="image-preview-single" src="#" alt="Selected Preview" class="max-h-48 rounded object-contain">
-                        </div>
-                        <div class="mt-3 flex items-center gap-3 relative z-20">
-                            <span id="preview-filename-single" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono"></span>
-                            <button type="button" onclick="clearFileSelection('single')" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline">Remove</button>
-                        </div>
+                        <div class="relative inline-block border border-slate-200 dark:border-slate-600 rounded-lg p-1 bg-white dark:bg-slate-800 shadow-xs"><img id="image-preview-single" src="#" alt="Selected Preview" class="max-h-48 rounded object-contain"></div>
+                        <div class="mt-3 flex items-center gap-3 relative z-20"><span id="preview-filename-single" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono"></span><button type="button" onclick="clearFileSelection('single')" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline">Remove</button></div>
                     </div>
                 </div>
                 <div class="flex justify-end">
-                    <button id="submit-btn-single" type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                        <span>Run Diagnostic Check</span>
-                    </button>
+                    <button id="submit-btn-single" type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg><span>Run Diagnostic Check</span></button>
                 </div>
             </form>
 
-            <!-- Bulk ZIP Upload Form -->
+            <!-- Batch Form -->
             <form id="form-batch" action="{{ url_for('batch_process') }}" method="POST" enctype="multipart/form-data" class="space-y-4 hidden">
                 <div class="relative group border-2 border-dashed border-slate-200 dark:border-slate-600 hover:border-emerald-400 dark:hover:border-emerald-500 bg-slate-50 dark:bg-slate-900/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-900/20 rounded-xl p-6 transition-all text-center">
                     <input id="zip_file" name="zip_file" type="file" required accept=".zip" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this, 'batch')">
-                    
                     <div id="upload-prompt-batch" class="flex flex-col items-center">
-                        <div class="h-10 w-10 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 mb-3 transition-colors">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg>
-                        </div>
+                        <div class="h-10 w-10 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 mb-3 transition-colors"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"/></svg></div>
                         <span class="text-xs font-semibold text-slate-800 dark:text-slate-200">Upload a compressed ZIP archive of PAN cards</span>
-                        <span class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">Folders inside ZIP are supported (max 50MB)</span>
                     </div>
-
                     <div id="preview-box-batch" class="hidden flex-col items-center justify-center pt-4">
-                        <div class="h-16 w-16 mb-2 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                            <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        </div>
-                        <div class="flex items-center gap-3 relative z-20">
-                            <span id="preview-filename-batch" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono"></span>
-                            <button type="button" onclick="clearFileSelection('batch')" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline">Remove</button>
-                        </div>
+                        <div class="h-16 w-16 mb-2 rounded border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400"><svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+                        <div class="flex items-center gap-3 relative z-20"><span id="preview-filename-batch" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono"></span><button type="button" onclick="clearFileSelection('batch')" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:underline">Remove</button></div>
                     </div>
                 </div>
                 <div class="flex justify-end">
-                    <button id="submit-btn-batch" type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                        <span>Process Batch & Export CSV</span>
-                    </button>
+                    <button id="submit-btn-batch" type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg><span>Process Batch</span></button>
                 </div>
             </form>
         </div>
 
-        <!-- Diagnostic Report (Single Scan Only) -->
+        <!-- Diagnostic Report -->
         {% if result %}
         <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50">
@@ -187,10 +159,12 @@
                     <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-sm">{{ result.original_image }}</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    {% if result.is_tampered %}
+                    {% if result.status == 'Tampered' %}
                         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-bold uppercase tracking-wider"><span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>Tampered</div>
-                    {% else %}
+                    {% elif result.status == 'Authentic' %}
                         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider"><span class="h-2 w-2 rounded-full bg-emerald-500"></span>Authentic</div>
+                    {% else %}
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-wider"><span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>Manual Review</div>
                     {% endif %}
                     
                     <div class="text-right px-3 border-l border-slate-200 dark:border-slate-700">
@@ -199,13 +173,12 @@
                     </div>
 
                     <a href="{{ url_for('download_report', record_id=result.id) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold shadow-xs transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                        <span>Download PDF</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span>PDF Report</span>
                     </a>
 
                     <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium">
                         <button type="button" onclick="switchInspectionView('split')" id="btn-view-split" class="px-3 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold">Slider View</button>
-                        <button type="button" onclick="switchInspectionView('side')" id="btn-view-side" class="px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Side-by-Side</button>
+                        <button type="button" onclick="switchInspectionView('side')" id="btn-view-side" class="px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Grid View</button>
                     </div>
                 </div>
             </div>
@@ -224,10 +197,11 @@
                 </div>
             </div>
 
-            <!-- Side View -->
-            <div id="view-side-container" class="hidden p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/30 dark:bg-slate-800/30">
+            <!-- Grid View (Original, Heatmap, ELA) -->
+            <div id="view-side-container" class="hidden p-6 grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-50/30 dark:bg-slate-800/30">
                 <div class="space-y-2"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Input</span></div><div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2"><img src="{{ url_for('static', filename='uploads/' + result.original_image) }}" class="h-full w-full object-contain rounded"></div></div>
-                <div class="space-y-2"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Heatmap</span></div><div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2"><img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" class="h-full w-full object-contain rounded"></div></div>
+                <div class="space-y-2"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">VGG16 Grad-CAM</span></div><div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2"><img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" class="h-full w-full object-contain rounded"></div></div>
+                <div class="space-y-2"><div class="flex items-center justify-between"><span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide">Error Level Analysis</span><span class="text-[11px] text-amber-600 dark:text-amber-400 font-medium font-mono">{{ "%.2f"|format(result.ela_score) }}%</span></div><div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2"><img src="{{ url_for('static', filename='uploads/' + result.ela_image) }}" class="h-full w-full object-contain rounded"></div></div>
             </div>
         </div>
         {% endif %}
@@ -244,6 +218,7 @@
                         <button type="button" onclick="setAuditFilter('all')" id="filter-btn-all" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold">All</button>
                         <button type="button" onclick="setAuditFilter('tampered')" id="filter-btn-tampered" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Tampered</button>
                         <button type="button" onclick="setAuditFilter('authentic')" id="filter-btn-authentic" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Authentic</button>
+                        <button type="button" onclick="setAuditFilter('review')" id="filter-btn-review" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">Review</button>
                     </div>
                     <div class="relative">
                         <input type="text" id="audit-search" oninput="filterTable()" placeholder="Search filename..." class="w-48 pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500">
@@ -265,11 +240,17 @@
                     </thead>
                     <tbody id="audit-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-600 dark:text-slate-300">
                         {% for record in history %}
-                        <tr class="audit-row hover:bg-slate-50/80 dark:hover:bg-slate-700/50" data-status="{{ 'tampered' if record.is_tampered else 'authentic' }}" data-filename="{{ record.filename | lower }}">
+                        <tr class="audit-row hover:bg-slate-50/80 dark:hover:bg-slate-700/50" data-status="{{ record.status|lower }}" data-filename="{{ record.filename|lower }}">
                             <td class="px-6 py-3.5 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">{{ record.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
                             <td class="px-6 py-3.5 font-medium text-slate-800 dark:text-slate-200 truncate max-w-xs" title="{{ record.filename }}">{{ record.filename }}</td>
                             <td class="px-6 py-3.5 text-center whitespace-nowrap">
-                                {% if record.is_tampered %}<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Tampered</span>{% else %}<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Authentic</span>{% endif %}
+                                {% if record.status == 'Tampered' %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Tampered</span>
+                                {% elif record.status == 'Authentic' %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Authentic</span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800"><span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Review</span>
+                                {% endif %}
                             </td>
                             <td class="px-6 py-3.5 text-right font-mono font-semibold text-slate-800 dark:text-slate-200">{{ "%.2f"|format(record.confidence) }}%</td>
                             <td class="px-6 py-3.5 text-center whitespace-nowrap">
@@ -289,7 +270,6 @@
 
     </main>
 
-    <!-- Theme & UI Scripts -->
     <script>
         const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
         const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
@@ -311,7 +291,6 @@
             const formBatch = document.getElementById('form-batch');
             const tabSingle = document.getElementById('tab-single');
             const tabBatch = document.getElementById('tab-batch');
-
             if (mode === 'single') {
                 formSingle.classList.remove('hidden'); formBatch.classList.add('hidden');
                 tabSingle.className = "px-4 py-1.5 rounded-md bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs";
@@ -354,51 +333,32 @@
             btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>Analyzing Document...</span>`;
         });
 
-        // Batch Form Fetch API Fix
         document.getElementById('form-batch').addEventListener('submit', function(e) {
             e.preventDefault();
-            
             const form = this;
             const btn = document.getElementById('submit-btn-batch');
             const originalHTML = btn.innerHTML;
-            
-            btn.disabled = true; 
-            btn.classList.add('opacity-80', 'cursor-not-allowed');
+            btn.disabled = true; btn.classList.add('opacity-80', 'cursor-not-allowed');
             btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>Processing Batch Images...</span>`;
 
-            fetch(form.action, {
-                method: 'POST',
-                body: new FormData(form)
-            })
+            fetch(form.action, { method: 'POST', body: new FormData(form) })
             .then(response => {
                 if (!response.ok) throw new Error("Server error");
                 let filename = "batch_report.csv";
                 const disposition = response.headers.get('Content-Disposition');
-                if (disposition && disposition.includes('filename=')) {
-                    filename = disposition.split('filename=')[1].split(';')[0].replace(/['"]/g, '');
-                }
+                if (disposition && disposition.includes('filename=')) { filename = disposition.split('filename=')[1].split(';')[0].replace(/['"]/g, ''); }
                 return response.blob().then(blob => ({blob, filename}));
             })
             .then(({blob, filename}) => {
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = filename;
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1000);
+                a.style.display = 'none'; a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click(); window.URL.revokeObjectURL(url);
+                setTimeout(() => { window.location.reload(); }, 1000);
             })
             .catch(error => {
-                console.error(error);
-                alert("An error occurred processing the ZIP. Please ensure it contains valid images.");
-                btn.disabled = false;
-                btn.classList.remove('opacity-80', 'cursor-not-allowed');
-                btn.innerHTML = originalHTML;
+                console.error(error); alert("An error occurred processing the ZIP.");
+                btn.disabled = false; btn.classList.remove('opacity-80', 'cursor-not-allowed'); btn.innerHTML = originalHTML;
             });
         });
 
@@ -424,7 +384,7 @@
         let currentFilter = 'all';
         function setAuditFilter(filter) {
             currentFilter = filter;
-            ['all', 'tampered', 'authentic'].forEach(f => {
+            ['all', 'tampered', 'authentic', 'review'].forEach(f => {
                 document.getElementById('filter-btn-' + f).className = (f === filter) ? "px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold" : "px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200";
             });
             filterTable();

@@ -13,6 +13,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from tensorflow.keras.models import load_model
 from flask_sqlalchemy import SQLAlchemy
+from PIL import Image, ImageChops, ImageEnhance
 
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
@@ -25,7 +26,6 @@ app.secret_key = 'final_year_project_secret_key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pan_system.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Increased to 50MB to support Bulk ZIP uploads
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 
 
 db = SQLAlchemy(app)
@@ -41,8 +41,10 @@ class ScanRecord(db.Model):
     username = db.Column(db.String(80), nullable=False)
     filename = db.Column(db.String(120), nullable=False)
     heatmap_filename = db.Column(db.String(120), nullable=False)
-    is_tampered = db.Column(db.Boolean, nullable=False)
+    ela_filename = db.Column(db.String(120), nullable=False)
+    status = db.Column(db.String(20), nullable=False) # 'Authentic', 'Tampered', 'Review'
     confidence = db.Column(db.Float, nullable=False)
+    ela_score = db.Column(db.Float, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 with app.app_context():
@@ -64,6 +66,34 @@ if vgg_base is None: raise ValueError("Could not find VGG16 base model layer.")
 last_conv_layer = vgg_base.get_layer('block5_conv3')
 pool_layer = vgg_base.get_layer('block5_pool')
 classifier_layers = model.layers[vgg_idx + 1:]
+
+def perform_ela(filepath, filename):
+    """Generates Error Level Analysis (ELA) image and calculates anomaly score."""
+    temp_filename = 'temp_ela.jpg'
+    im = Image.open(filepath).convert('RGB')
+    im.save(temp_filename, 'JPEG', quality=90) # Resave at 90% to find compression differences
+    
+    temp_im = Image.open(temp_filename)
+    ela_im = ImageChops.difference(im, temp_im)
+    
+    extrema = ela_im.getextrema()
+    max_diff = max([ex[1] for ex in extrema])
+    if max_diff == 0: max_diff = 1
+    scale = 255.0 / max_diff
+    ela_im = ImageEnhance.Brightness(ela_im).enhance(scale)
+    
+    # Calculate anomaly percentage
+    gray_ela = ela_im.convert('L')
+    pixels = list(gray_ela.getdata())
+    anomaly_pixels = sum(1 for p in pixels if p > 50)
+    ela_score = (anomaly_pixels / len(pixels)) * 100
+    
+    ela_filename = "ela_" + filename
+    ela_path = os.path.join(app.config['UPLOAD_FOLDER'], ela_filename)
+    ela_im.save(ela_path)
+    os.remove(temp_filename)
+    
+    return ela_filename, ela_score
 
 def get_gradcam_heatmap(img_array, model, vgg_base, last_conv_layer, pool_layer):
     img_tensor = tf.convert_to_tensor(img_array, dtype=tf.float32)
@@ -90,10 +120,14 @@ def get_gradcam_heatmap(img_array, model, vgg_base, last_conv_layer, pool_layer)
     return heatmap.numpy()
 
 def process_and_log_image(filepath, filename, username):
-    """Core Inference Pipeline Refactored for Single and Batch Use"""
+    """Hybrid Inference Pipeline: VGG16 + Error Level Analysis (ELA)"""
     img = cv2.imread(filepath)
     if img is None: return None
     
+    # 1. Error Level Analysis
+    ela_filename, ela_score = perform_ela(filepath, filename)
+
+    # 2. VGG16 Deep Learning Prediction
     original_h, original_w = img.shape[:2]
     img_resized = cv2.resize(img, (224, 224))
     img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
@@ -101,9 +135,27 @@ def process_and_log_image(filepath, filename, username):
     img_array = np.expand_dims(img_array, axis=0)
 
     prediction = model.predict(img_array, verbose=0)[0][0]
-    is_tampered = True if prediction > 0.5 else False
-    confidence = round(float((prediction if is_tampered else (1 - prediction)) * 100), 2)
+    vgg_confidence = float(prediction) * 100 # 0 to 100% chance of being tampered
 
+    # 3. Hybrid Decision Matrix
+    if vgg_confidence >= 70:
+        status = 'Tampered'
+        final_conf = vgg_confidence
+    elif vgg_confidence <= 35:
+        if ela_score > 12.0: 
+            status = 'Review'
+            # FIX: VGG thinks it's real, but ELA spots an anomaly. 
+            # The system is conflicted, so confidence defaults to uncertainty (~50-60%)
+            final_conf = 50.0 + (ela_score / 2)
+        else:
+            status = 'Authentic'
+            final_conf = 100.0 - vgg_confidence
+    else:
+        # VGG gray area (35% to 70%) 
+        status = 'Review'
+        final_conf = max(vgg_confidence, 100.0 - vgg_confidence)
+
+    # 4. Grad-CAM Generation
     heatmap = get_gradcam_heatmap(img_array, model, vgg_base, last_conv_layer, pool_layer)
     heatmap_resized = cv2.resize(heatmap, (original_w, original_h), interpolation=cv2.INTER_CUBIC)
     heatmap_resized = np.uint8(255 * heatmap_resized)
@@ -118,18 +170,22 @@ def process_and_log_image(filepath, filename, username):
         username=username,
         filename=filename,
         heatmap_filename=heatmap_filename,
-        is_tampered=is_tampered,
-        confidence=confidence
+        ela_filename=ela_filename,
+        status=status,
+        confidence=round(final_conf, 2),
+        ela_score=round(ela_score, 2)
     )
     db.session.add(record)
     db.session.commit()
 
     return {
         'id': record.id,
-        'is_tampered': is_tampered,
-        'confidence': confidence,
+        'status': status,
+        'confidence': round(final_conf, 2),
+        'ela_score': round(ela_score, 2),
         'original_image': filename,
-        'heatmap_image': heatmap_filename
+        'heatmap_image': heatmap_filename,
+        'ela_image': ela_filename
     }
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -176,12 +232,13 @@ def index():
     history = ScanRecord.query.filter_by(username=session['user']).order_by(ScanRecord.timestamp.desc()).all()
     
     total_scans = len(history)
-    tampered_count = sum(1 for r in history if r.is_tampered)
+    tampered_count = sum(1 for r in history if r.status == 'Tampered')
+    review_count = sum(1 for r in history if r.status == 'Review')
     
     stats = {
         'total': total_scans,
         'tampered': tampered_count,
-        'authentic': total_scans - tampered_count,
+        'review': review_count,
         'tampered_rate': round((tampered_count / total_scans * 100), 1) if total_scans > 0 else 0.0,
         'avg_confidence': round(sum(r.confidence for r in history) / total_scans, 2) if total_scans > 0 else 0.0
     }
@@ -190,7 +247,6 @@ def index():
 
 @app.route('/batch_process', methods=['POST'])
 def batch_process():
-    """Extracts a ZIP file, processes all images, and returns a combined CSV report."""
     if 'user' not in session: return redirect(url_for('login'))
     
     file = request.files.get('zip_file')
@@ -204,8 +260,7 @@ def batch_process():
     file.save(zip_path)
     
     try:
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref: zip_ref.extractall(temp_dir)
     except zipfile.BadZipFile:
         shutil.rmtree(temp_dir)
         flash('Invalid or corrupted ZIP file', 'danger')
@@ -225,15 +280,14 @@ def batch_process():
                 res = process_and_log_image(final_path, safe_name, session['user'])
                 if res: results.append(res)
                 
-    shutil.rmtree(temp_dir) # Clean up temp extracted files
+    shutil.rmtree(temp_dir)
     flash(f'Batch complete! Successfully processed {len(results)} documents.', 'success')
 
-    # Generate CSV Output directly
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Record ID', 'Compliance Agent', 'Timestamp (UTC)', 'Original Filename', 'Status', 'Confidence Score (%)'])
+    writer.writerow(['Record ID', 'Compliance Agent', 'Timestamp (UTC)', 'Original Filename', 'Status', 'Confidence Score (%)', 'ELA Score (%)'])
     for r in results:
-        writer.writerow([f"#{r['id']:05d}", session['user'], datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'), r['original_image'], 'Tampered' if r['is_tampered'] else 'Authentic', f"{r['confidence']}%"])
+        writer.writerow([f"#{r['id']:05d}", session['user'], datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S'), r['original_image'], r['status'], f"{r['confidence']}%", f"{r['ela_score']}%"])
         
     output.seek(0)
     return Response(
@@ -249,10 +303,10 @@ def export_csv():
     
     output = StringIO()
     writer = csv.writer(output)
-    writer.writerow(['Record ID', 'Compliance Agent', 'Timestamp (UTC)', 'Original Filename', 'Status', 'Confidence Score (%)', 'Grad-CAM Heatmap File'])
+    writer.writerow(['Record ID', 'Compliance Agent', 'Timestamp (UTC)', 'Original Filename', 'Status', 'Confidence Score (%)', 'ELA Score (%)'])
     
     for record in history:
-        writer.writerow([f"#{record.id:05d}", record.username, record.timestamp.strftime('%Y-%m-%d %H:%M:%S'), record.filename, 'Tampered' if record.is_tampered else 'Authentic', f"{record.confidence:.2f}%", record.heatmap_filename])
+        writer.writerow([f"#{record.id:05d}", record.username, record.timestamp.strftime('%Y-%m-%d %H:%M:%S'), record.filename, record.status, f"{record.confidence:.2f}%", f"{record.ela_score:.2f}%"])
         
     output.seek(0)
     return Response(output.getvalue(), mimetype='text/csv', headers={"Content-Disposition": f"attachment; filename=kyc_audit_log_{session['user']}.csv"})
@@ -271,19 +325,24 @@ def download_report(record_id):
     
     elements = []
     elements.append(Paragraph("KYC FORENSIC AUDIT REPORT", title_style))
-    elements.append(Paragraph("Automated PAN Card Tampering & Forgery Detection Portal", subtitle_style))
+    elements.append(Paragraph("Hybrid VGG16 + Error Level Analysis Verification Portal", subtitle_style))
     elements.append(Spacer(1, 15))
     
-    status_text = "TAMPERED / FORGERY DETECTED" if record.is_tampered else "AUTHENTIC DOCUMENT"
-    status_color = "#E11D48" if record.is_tampered else "#059669"
+    if record.status == 'Tampered':
+        status_color = "#E11D48"
+    elif record.status == 'Authentic':
+        status_color = "#059669"
+    else:
+        status_color = "#D97706"
     
     meta_data = [
         [Paragraph("<b>Audit ID:</b>", styles['Normal']), Paragraph(f"#{record.id:05d}", styles['Normal'])],
         [Paragraph("<b>Agent:</b>", styles['Normal']), Paragraph(record.username, styles['Normal'])],
         [Paragraph("<b>Timestamp:</b>", styles['Normal']), Paragraph(record.timestamp.strftime('%Y-%m-%d %H:%M:%S'), styles['Normal'])],
         [Paragraph("<b>Filename:</b>", styles['Normal']), Paragraph(record.filename, styles['Normal'])],
-        [Paragraph("<b>Verdict:</b>", styles['Normal']), Paragraph(f"<font color='{status_color}'><b>{status_text}</b></font>", styles['Normal'])],
+        [Paragraph("<b>Verdict:</b>", styles['Normal']), Paragraph(f"<font color='{status_color}'><b>{record.status.upper()}</b></font>", styles['Normal'])],
         [Paragraph("<b>Confidence:</b>", styles['Normal']), Paragraph(f"<b>{record.confidence:.2f}%</b>", styles['Normal'])],
+        [Paragraph("<b>ELA Anomaly Score:</b>", styles['Normal']), Paragraph(f"{record.ela_score:.2f}%", styles['Normal'])],
     ]
     
     t1 = Table(meta_data, colWidths=[2.2*inch, 4.8*inch])
@@ -296,11 +355,13 @@ def download_report(record_id):
     
     orig_path = os.path.join(app.config['UPLOAD_FOLDER'], record.filename)
     heat_path = os.path.join(app.config['UPLOAD_FOLDER'], record.heatmap_filename)
+    ela_path = os.path.join(app.config['UPLOAD_FOLDER'], record.ela_filename)
     
-    orig_img = RLImage(orig_path, width=3.3*inch, height=2.2*inch) if os.path.exists(orig_path) else Paragraph("Original missing", styles['Normal'])
-    heat_img = RLImage(heat_path, width=3.3*inch, height=2.2*inch) if os.path.exists(heat_path) else Paragraph("Heatmap missing", styles['Normal'])
+    orig_img = RLImage(orig_path, width=2.2*inch, height=1.5*inch) if os.path.exists(orig_path) else Paragraph("Original missing", styles['Normal'])
+    heat_img = RLImage(heat_path, width=2.2*inch, height=1.5*inch) if os.path.exists(heat_path) else Paragraph("Heatmap missing", styles['Normal'])
+    ela_img = RLImage(ela_path, width=2.2*inch, height=1.5*inch) if os.path.exists(ela_path) else Paragraph("ELA missing", styles['Normal'])
     
-    t2 = Table([[Paragraph("<b>Input Document</b>", styles['Normal']), Paragraph("<b>Grad-CAM Heatmap</b>", styles['Normal'])], [orig_img, heat_img]], colWidths=[3.5*inch, 3.5*inch])
+    t2 = Table([[Paragraph("<b>Input</b>", styles['Normal']), Paragraph("<b>Grad-CAM</b>", styles['Normal']), Paragraph("<b>ELA</b>", styles['Normal'])], [orig_img, heat_img, ela_img]], colWidths=[2.3*inch, 2.3*inch, 2.3*inch])
     t2.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
     elements.append(t2)
     
