@@ -1,20 +1,29 @@
 import os
 import cv2
+import csv
+from io import BytesIO, StringIO
 import numpy as np
 import tensorflow as tf
 from datetime import datetime
-from flask import Flask, request, render_template, redirect, url_for, session, flash
+from flask import Flask, request, render_template, redirect, url_for, session, flash, send_file, Response
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from tensorflow.keras.models import load_model
 from flask_sqlalchemy import SQLAlchemy
+
+# ReportLab components for PDF generation
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Image as RLImage, Table, TableStyle
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
+from reportlab.lib.units import inch
 
 app = Flask(__name__)
 app.secret_key = 'final_year_project_secret_key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pan_system.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # 10MB upload limit
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
 db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -175,6 +184,7 @@ def index():
             db.session.commit()
 
             result_data = {
+                'id': record.id,
                 'is_tampered': is_tampered,
                 'confidence': confidence,
                 'original_image': filename,
@@ -183,7 +193,6 @@ def index():
 
     history = ScanRecord.query.filter_by(username=session['user']).order_by(ScanRecord.timestamp.desc()).all()
     
-    # Calculate KPI Analytics
     total_scans = len(history)
     tampered_count = sum(1 for r in history if r.is_tampered)
     authentic_count = total_scans - tampered_count
@@ -199,6 +208,137 @@ def index():
     }
 
     return render_template('index.html', result=result_data, history=history, stats=stats, user=session['user'])
+
+# Feature 1: Export Audit Trail to CSV
+@app.route('/export_csv')
+def export_csv():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    history = ScanRecord.query.filter_by(username=session['user']).order_by(ScanRecord.timestamp.desc()).all()
+    
+    output = StringIO()
+    writer = csv.writer(output)
+    
+    writer.writerow(['Record ID', 'Compliance Agent', 'Timestamp (UTC)', 'Original Filename', 'Status', 'Confidence Score (%)', 'Grad-CAM Heatmap File'])
+    
+    for record in history:
+        writer.writerow([
+            f"#{record.id:05d}",
+            record.username,
+            record.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+            record.filename,
+            'Tampered' if record.is_tampered else 'Authentic',
+            f"{record.confidence:.2f}%",
+            record.heatmap_filename
+        ])
+        
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype='text/csv',
+        headers={"Content-Disposition": f"attachment; filename=kyc_audit_log_{session['user']}.csv"}
+    )
+
+# Feature 2: Download Forensic PDF Audit Report
+@app.route('/download_report/<int:record_id>')
+def download_report(record_id):
+    if 'user' not in session:
+        return redirect(url_for('login'))
+    
+    record = ScanRecord.query.get_or_404(record_id)
+    
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=36, leftMargin=36, topMargin=36, bottomMargin=36)
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Heading1'],
+        fontSize=18,
+        leading=22,
+        textColor=colors.HexColor('#0F172A'),
+        alignment=1
+    )
+    subtitle_style = ParagraphStyle(
+        'DocSubtitle',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=13,
+        textColor=colors.HexColor('#64748B'),
+        alignment=1
+    )
+    normal_style = styles['Normal']
+    
+    elements = []
+    
+    elements.append(Paragraph("KYC FORENSIC AUDIT REPORT", title_style))
+    elements.append(Paragraph("Automated PAN Card Tampering & Forgery Detection Portal", subtitle_style))
+    elements.append(Spacer(1, 15))
+    
+    status_text = "TAMPERED / FORGERY DETECTED" if record.is_tampered else "AUTHENTIC DOCUMENT"
+    status_color = "#E11D48" if record.is_tampered else "#059669"
+    
+    meta_data = [
+        [Paragraph("<b>Audit Record ID:</b>", normal_style), Paragraph(f"#{record.id:05d}", normal_style)],
+        [Paragraph("<b>Verifying Agent:</b>", normal_style), Paragraph(record.username, normal_style)],
+        [Paragraph("<b>Timestamp (UTC):</b>", normal_style), Paragraph(record.timestamp.strftime('%Y-%m-%d %H:%M:%S'), normal_style)],
+        [Paragraph("<b>Document Filename:</b>", normal_style), Paragraph(record.filename, normal_style)],
+        [Paragraph("<b>Forensic Verdict:</b>", normal_style), Paragraph(f"<font color='{status_color}'><b>{status_text}</b></font>", normal_style)],
+        [Paragraph("<b>Model Confidence:</b>", normal_style), Paragraph(f"<b>{record.confidence:.2f}%</b> (VGG16 Transfer Learning)", normal_style)],
+    ]
+    
+    meta_table = Table(meta_data, colWidths=[2.2 * inch, 4.8 * inch])
+    meta_table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F8FAFC')),
+        ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#E2E8F0')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#E2E8F0')),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+    ]))
+    elements.append(meta_table)
+    elements.append(Spacer(1, 20))
+    
+    elements.append(Paragraph("<b>Visual Forensic Examination (Side-by-Side):</b>", styles['Heading3']))
+    elements.append(Spacer(1, 8))
+    
+    orig_path = os.path.join(app.config['UPLOAD_FOLDER'], record.filename)
+    heat_path = os.path.join(app.config['UPLOAD_FOLDER'], record.heatmap_filename)
+    
+    orig_img = RLImage(orig_path, width=3.3 * inch, height=2.2 * inch) if os.path.exists(orig_path) else Paragraph("Original file missing", normal_style)
+    heat_img = RLImage(heat_path, width=3.3 * inch, height=2.2 * inch) if os.path.exists(heat_path) else Paragraph("Heatmap file missing", normal_style)
+    
+    img_data = [
+        [Paragraph("<b>Input Document (RGB)</b>", normal_style), Paragraph("<b>Grad-CAM Activation Map (block5_conv3)</b>", normal_style)],
+        [orig_img, heat_img]
+    ]
+    
+    img_table = Table(img_data, colWidths=[3.5 * inch, 3.5 * inch])
+    img_table.setStyle(TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
+    ]))
+    elements.append(img_table)
+    elements.append(Spacer(1, 25))
+    
+    disclaimer = Paragraph(
+        "<font size='8' color='#94A3B8'>CONFIDENTIAL COMPLIANCE DOCUMENT: Generated by Automated Document Forgery Detection Engine. Model activations traced via Gradient-weighted Class Activation Mapping (Grad-CAM). For certified compliance purposes only.</font>",
+        subtitle_style
+    )
+    elements.append(disclaimer)
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"audit_report_{record.id}_{record.filename}.pdf",
+        mimetype='application/pdf'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

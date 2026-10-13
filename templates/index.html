@@ -172,7 +172,7 @@
                     <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-colors">Diagnostic Verdict</span>
                     <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-sm transition-colors" title="{{ result.original_image }}">{{ result.original_image }}</h3>
                 </div>
-                <div class="flex items-center gap-4">
+                <div class="flex flex-wrap items-center gap-3">
                     {% if result.is_tampered %}
                         <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-bold uppercase tracking-wider transition-colors">
                             <span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>Tampered
@@ -182,10 +182,18 @@
                             <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Authentic
                         </div>
                     {% endif %}
-                    <div class="text-right pl-4 border-l border-slate-200 dark:border-slate-700 transition-colors">
+                    
+                    <div class="text-right px-3 border-l border-slate-200 dark:border-slate-700 transition-colors">
                         <span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider block transition-colors">Confidence</span>
                         <span class="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono transition-colors">{{ "%.2f"|format(result.confidence) }}%</span>
                     </div>
+
+                    <!-- PDF Report Download Button -->
+                    <a href="{{ url_for('download_report', record_id=result.id) }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200 dark:border-indigo-800 text-xs font-semibold shadow-xs transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                        <span>Download PDF</span>
+                    </a>
+
                     <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors">
                         <button type="button" onclick="switchInspectionView('split')" id="btn-view-split" class="px-3 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors">Slider View</button>
                         <button type="button" onclick="switchInspectionView('side')" id="btn-view-side" class="px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Side-by-Side</button>
@@ -236,11 +244,18 @@
                     <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white transition-colors">Compliance Audit Trail</h3>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
+                    <!-- Export to CSV Button -->
+                    <a href="{{ url_for('export_csv') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-semibold shadow-xs transition-colors">
+                        <svg class="w-3.5 h-3.5 text-slate-500 dark:text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Export CSV</span>
+                    </a>
+
                     <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors">
                         <button type="button" onclick="setAuditFilter('all')" id="filter-btn-all" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors">All</button>
                         <button type="button" onclick="setAuditFilter('tampered')" id="filter-btn-tampered" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Tampered</button>
                         <button type="button" onclick="setAuditFilter('authentic')" id="filter-btn-authentic" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Authentic</button>
                     </div>
+
                     <div class="relative">
                         <input type="text" id="audit-search" oninput="filterTable()" placeholder="Search filename..." class="w-48 pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors">
                         <svg class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
@@ -256,6 +271,7 @@
                             <th class="px-6 py-3.5">Document File</th>
                             <th class="px-6 py-3.5 text-center">Status</th>
                             <th class="px-6 py-3.5 text-right">Confidence Score</th>
+                            <th class="px-6 py-3.5 text-center">Report</th>
                         </tr>
                     </thead>
                     <tbody id="audit-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-600 dark:text-slate-300 transition-colors">
@@ -271,11 +287,16 @@
                                 {% endif %}
                             </td>
                             <td class="px-6 py-3.5 text-right font-mono font-semibold text-slate-800 dark:text-slate-200 transition-colors">{{ "%.2f"|format(record.confidence) }}%</td>
+                            <td class="px-6 py-3.5 text-center whitespace-nowrap">
+                                <a href="{{ url_for('download_report', record_id=record.id) }}" title="Download PDF Report" class="inline-flex items-center text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 p-1 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                </a>
+                            </td>
                         </tr>
                         {% else %}
-                        <tr id="empty-history-row"><td colspan="4" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No previous scans found in audit database.</td></tr>
+                        <tr id="empty-history-row"><td colspan="5" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No previous scans found in audit database.</td></tr>
                         {% endfor %}
-                        <tr id="no-search-results-row" class="hidden"><td colspan="4" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No records match the current filter criteria.</td></tr>
+                        <tr id="no-search-results-row" class="hidden"><td colspan="5" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No records match the current filter criteria.</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -285,7 +306,6 @@
 
     <!-- Theme & UI Scripts -->
     <script>
-        // Theme Toggle Logic
         const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
         const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -315,7 +335,6 @@
             }
         });
 
-        // UI Handlers
         function handleFileSelect(input) {
             const previewBox = document.getElementById('preview-box');
             const uploadPrompt = document.getElementById('upload-prompt');
