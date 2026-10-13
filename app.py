@@ -14,6 +14,7 @@ app.secret_key = 'final_year_project_secret_key'
 app.config['UPLOAD_FOLDER'] = 'static/uploads/'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///pan_system.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024 # 10MB upload limit
 
 db = SQLAlchemy(app)
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
@@ -132,8 +133,8 @@ def index():
     
     result_data = None
     if request.method == 'POST':
-        file = request.files['pan_card']
-        if file:
+        file = request.files.get('pan_card')
+        if file and file.filename != '':
             filename = secure_filename(file.filename)
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(filepath)
@@ -142,8 +143,6 @@ def index():
             original_h, original_w = img.shape[:2]
             
             img_resized = cv2.resize(img, (224, 224))
-            
-            # Convert BGR to RGB to match VGG16 ImageNet training standards
             img_rgb = cv2.cvtColor(img_resized, cv2.COLOR_BGR2RGB)
             
             img_array = img_rgb.astype("float") / 255.0
@@ -151,11 +150,10 @@ def index():
 
             prediction = model.predict(img_array)[0][0]
             is_tampered = True if prediction > 0.5 else False
-            confidence = round((prediction if is_tampered else (1 - prediction)) * 100, 2)
+            confidence = round(float((prediction if is_tampered else (1 - prediction)) * 100), 2)
 
             heatmap = get_gradcam_heatmap(img_array, model, vgg_base, last_conv_layer, pool_layer)
             
-            # Bicubic interpolation for smooth, high-resolution visual output
             heatmap_resized = cv2.resize(heatmap, (original_w, original_h), interpolation=cv2.INTER_CUBIC)
             heatmap_resized = np.uint8(255 * heatmap_resized)
             
@@ -184,7 +182,23 @@ def index():
             }
 
     history = ScanRecord.query.filter_by(username=session['user']).order_by(ScanRecord.timestamp.desc()).all()
-    return render_template('index.html', result=result_data, history=history, user=session['user'])
+    
+    # Calculate KPI Analytics
+    total_scans = len(history)
+    tampered_count = sum(1 for r in history if r.is_tampered)
+    authentic_count = total_scans - tampered_count
+    tampered_rate = round((tampered_count / total_scans * 100), 1) if total_scans > 0 else 0.0
+    avg_confidence = round(sum(r.confidence for r in history) / total_scans, 2) if total_scans > 0 else 0.0
+
+    stats = {
+        'total': total_scans,
+        'tampered': tampered_count,
+        'authentic': authentic_count,
+        'tampered_rate': tampered_rate,
+        'avg_confidence': avg_confidence
+    }
+
+    return render_template('index.html', result=result_data, history=history, stats=stats, user=session['user'])
 
 if __name__ == '__main__':
     app.run(debug=True)

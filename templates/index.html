@@ -1,104 +1,392 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard | KYC Portal</title>
+    <title>KYC Forensics Engine | Verification Portal</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class' }
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { font-family: 'Inter', sans-serif; }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            cursor: ew-resize;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #4f46e5;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            cursor: ew-resize;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+<body class="min-h-full flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased transition-colors duration-300">
 
     <!-- Top Navigation -->
-    <nav class="bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <h1 class="text-lg font-semibold text-gray-900">Document Verification Portal</h1>
-        <div class="text-sm text-gray-600">
-            <span class="mr-4">Agent: <strong>{{ user }}</strong></span>
-            <a href="{{ url_for('logout') }}" class="text-blue-600 hover:underline font-medium">Logout</a>
-        </div>
-    </nav>
-
-    <!-- Main Container -->
-    <main class="flex-1 max-w-5xl w-full mx-auto p-6 mt-4">
-        
-        <!-- Upload Section -->
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <h2 class="text-base font-semibold mb-4">Run New Scan</h2>
-            <form method="POST" enctype="multipart/form-data" class="flex flex-col sm:flex-row items-center gap-4">
-                <input type="file" name="pan_card" required accept="image/*" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
-                <button type="submit" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded text-sm font-medium transition-colors whitespace-nowrap">
-                    Analyze Document
+    <header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40 shadow-xs transition-colors">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="h-9 w-9 rounded-lg bg-indigo-600 flex items-center justify-center text-white shadow-sm">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-sm font-bold text-slate-900 dark:text-white tracking-tight leading-none transition-colors">KYC Forensics Engine</h1>
+                    <span class="text-[11px] font-medium text-slate-400 dark:text-slate-500 transition-colors">Automated PAN Card Tampering Detection</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                
+                <!-- Theme Toggle Button -->
+                <button id="theme-toggle" type="button" class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-sm p-2 transition-colors">
+                    <svg id="theme-toggle-dark-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"></path></svg>
+                    <svg id="theme-toggle-light-icon" class="hidden w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"></path></svg>
                 </button>
+
+                <div class="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700 transition-colors">
+                    <div class="h-8 w-8 rounded-full bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase transition-colors">
+                        {{ user[:2] if user else 'AG' }}
+                    </div>
+                    <div class="hidden sm:block text-left">
+                        <div class="text-xs font-semibold text-slate-900 dark:text-white leading-none transition-colors">{{ user }}</div>
+                        <div class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium transition-colors">Compliance Agent</div>
+                    </div>
+                </div>
+                <a href="{{ url_for('logout') }}" class="inline-flex items-center text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+                    Logout
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- KPI Metrics Grid -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-colors">Total Scans</span>
+                    <span class="p-1 rounded-md bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-2 transition-colors">{{ stats.total }}</div>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 transition-colors">Processed documents</span>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-rose-500 dark:text-rose-400 transition-colors">Tampered Flagged</span>
+                    <span class="p-1 rounded-md bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-rose-600 dark:text-rose-400 mt-2 transition-colors">{{ stats.tampered }}</div>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 transition-colors">{{ stats.tampered_rate }}% fraud rate</span>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 transition-colors">Authentic Verified</span>
+                    <span class="p-1 rounded-md bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-2 transition-colors">{{ stats.authentic }}</div>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 transition-colors">Cleared compliance</span>
+            </div>
+            <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 shadow-xs transition-colors">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 transition-colors">Mean Confidence</span>
+                    <span class="p-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 transition-colors">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                    </span>
+                </div>
+                <div class="text-2xl font-bold font-mono text-indigo-600 dark:text-indigo-400 mt-2 transition-colors">{{ stats.avg_confidence }}%</div>
+                <span class="text-[11px] text-slate-500 dark:text-slate-400 transition-colors">VGG16 model metric</span>
+            </div>
+        </div>
+
+        <!-- Document Upload Form -->
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-6 shadow-xs transition-colors">
+            <div class="mb-4">
+                <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900 dark:text-white transition-colors">Run Document Inspection</h2>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 transition-colors">Upload a scanned image of an Indian PAN card (.jpg, .png)</p>
+            </div>
+
+            <form id="inspection-form" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <div class="relative group border-2 border-dashed border-slate-200 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-500 bg-slate-50 dark:bg-slate-900/50 hover:bg-indigo-50/20 dark:hover:bg-indigo-900/20 rounded-xl p-6 transition-all text-center">
+                    <input id="pan_card" name="pan_card" type="file" required accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="handleFileSelect(this)">
+                    
+                    <div id="upload-prompt" class="flex flex-col items-center">
+                        <div class="h-10 w-10 rounded-full bg-white dark:bg-slate-800 shadow-xs border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 dark:text-slate-500 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 mb-3 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/></svg>
+                        </div>
+                        <span class="text-xs font-semibold text-slate-800 dark:text-slate-200 transition-colors">Click to choose document or drag & drop</span>
+                        <span class="text-[11px] text-slate-400 dark:text-slate-500 mt-1 transition-colors">JPEG and PNG supported (max 10MB)</span>
+                    </div>
+
+                    <div id="preview-box" class="hidden flex-col items-center justify-center pt-2">
+                        <div class="relative inline-block border border-slate-200 dark:border-slate-600 rounded-lg p-1 bg-white dark:bg-slate-800 shadow-xs transition-colors">
+                            <img id="image-preview" src="#" alt="Selected Preview" class="max-h-48 rounded object-contain">
+                        </div>
+                        <div class="mt-3 flex items-center gap-3 relative z-20">
+                            <span id="preview-filename" class="text-xs font-semibold text-slate-700 dark:text-slate-300 font-mono transition-colors"></span>
+                            <span id="preview-filesize" class="text-[11px] text-slate-400 dark:text-slate-500 transition-colors"></span>
+                            <button type="button" onclick="clearFileSelection()" class="text-xs font-medium text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 underline transition-colors">Remove</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end">
+                    <button id="submit-btn" type="submit" class="inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 dark:focus:ring-offset-slate-800">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        <span>Run Forensic Diagnostic</span>
+                    </button>
+                </div>
             </form>
         </div>
 
-        <!-- Results Section -->
+        <!-- Diagnostic Report -->
         {% if result %}
-        <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 mb-6">
-            <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                <h2 class="text-lg font-semibold">Scan Results: <span class="text-gray-500 font-normal">{{ result.original_image }}</span></h2>
-                <div class="text-right">
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs overflow-hidden transition-colors">
+            <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/50 transition-colors">
+                <div>
+                    <span class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500 transition-colors">Diagnostic Verdict</span>
+                    <h3 class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-sm transition-colors" title="{{ result.original_image }}">{{ result.original_image }}</h3>
+                </div>
+                <div class="flex items-center gap-4">
                     {% if result.is_tampered %}
-                        <span class="px-3 py-1 bg-red-100 text-red-800 text-sm font-semibold rounded-full border border-red-200">TAMPERED</span>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 text-xs font-bold uppercase tracking-wider transition-colors">
+                            <span class="h-2 w-2 rounded-full bg-rose-500 animate-pulse"></span>Tampered
+                        </div>
                     {% else %}
-                        <span class="px-3 py-1 bg-green-100 text-green-800 text-sm font-semibold rounded-full border border-green-200">AUTHENTIC</span>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase tracking-wider transition-colors">
+                            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>Authentic
+                        </div>
                     {% endif %}
-                    <div class="text-sm text-gray-500 mt-1">Confidence: {{ result.confidence }}%</div>
+                    <div class="text-right pl-4 border-l border-slate-200 dark:border-slate-700 transition-colors">
+                        <span class="text-[10px] font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wider block transition-colors">Confidence</span>
+                        <span class="text-xs font-bold text-slate-800 dark:text-slate-200 font-mono transition-colors">{{ "%.2f"|format(result.confidence) }}%</span>
+                    </div>
+                    <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors">
+                        <button type="button" onclick="switchInspectionView('split')" id="btn-view-split" class="px-3 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors">Slider View</button>
+                        <button type="button" onclick="switchInspectionView('side')" id="btn-view-side" class="px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Side-by-Side</button>
+                    </div>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <h3 class="text-sm font-medium text-gray-500 mb-2">Original Document</h3>
-                    <img src="{{ url_for('static', filename='uploads/' + result.original_image) }}" alt="Original" class="w-full border border-gray-200 rounded">
+            <!-- Interactive Slider View -->
+            <div id="view-split-container" class="p-6 bg-slate-900/5 dark:bg-slate-900/30 flex flex-col items-center transition-colors">
+                <div class="relative w-full max-w-2xl aspect-16/10 rounded-xl overflow-hidden border border-slate-300 dark:border-slate-600 shadow-sm bg-black select-none transition-colors">
+                    <img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" class="absolute inset-0 w-full h-full object-contain">
+                    <span class="absolute bottom-3 right-3 z-10 px-2 py-1 rounded bg-black/70 text-[10px] font-mono text-white tracking-wide">HEATMAP OVERLAY</span>
+                    <div id="slider-clip" class="absolute inset-0 overflow-hidden" style="width: 50%;">
+                        <img src="{{ url_for('static', filename='uploads/' + result.original_image) }}" class="absolute inset-0 max-w-none w-full h-full object-contain bg-white dark:bg-slate-800">
+                        <span class="absolute bottom-3 left-3 z-10 px-2 py-1 rounded bg-black/70 text-[10px] font-mono text-white tracking-wide">ORIGINAL CARD</span>
+                    </div>
+                    <div id="slider-divider" class="absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_8px_rgba(0,0,0,0.6)] pointer-events-none" style="left: 50%;"></div>
+                    <input type="range" min="0" max="100" value="50" class="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-20" oninput="updateSplitSlider(this.value)">
                 </div>
-                <div>
-                    <h3 class="text-sm font-medium text-gray-500 mb-2">Grad-CAM Heatmap</h3>
-                    <img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" alt="Heatmap" class="w-full border border-gray-200 rounded">
+            </div>
+
+            <!-- Side-by-Side View -->
+            <div id="view-side-container" class="hidden p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/30 dark:bg-slate-800/30 transition-colors">
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide transition-colors">Input Document</span>
+                    </div>
+                    <div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2 transition-colors">
+                        <img src="{{ url_for('static', filename='uploads/' + result.original_image) }}" class="h-full w-full object-contain rounded">
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide transition-colors">Grad-CAM Heatmap</span>
+                    </div>
+                    <div class="aspect-4/3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-hidden shadow-xs flex items-center justify-center p-2 transition-colors">
+                        <img src="{{ url_for('static', filename='uploads/' + result.heatmap_image) }}" class="h-full w-full object-contain rounded">
+                    </div>
                 </div>
             </div>
         </div>
         {% endif %}
 
-        <!-- History Table -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                <h3 class="text-sm font-semibold">Recent Scans</h3>
+        <!-- Compliance Audit Trail -->
+        <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xs overflow-hidden transition-colors">
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors">
+                <div>
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white transition-colors">Compliance Audit Trail</h3>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex bg-slate-100 dark:bg-slate-900 p-0.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors">
+                        <button type="button" onclick="setAuditFilter('all')" id="filter-btn-all" class="px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors">All</button>
+                        <button type="button" onclick="setAuditFilter('tampered')" id="filter-btn-tampered" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Tampered</button>
+                        <button type="button" onclick="setAuditFilter('authentic')" id="filter-btn-authentic" class="px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors">Authentic</button>
+                    </div>
+                    <div class="relative">
+                        <input type="text" id="audit-search" oninput="filterTable()" placeholder="Search filename..." class="w-48 pl-7 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-colors">
+                        <svg class="w-3.5 h-3.5 text-slate-400 dark:text-slate-500 absolute left-2.5 top-2.5 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                    </div>
+                </div>
             </div>
-            <table class="w-full text-left text-sm">
-                <thead class="bg-gray-50 text-gray-500 border-b border-gray-200">
-                    <tr>
-                        <th class="px-6 py-3 font-medium">Date & Time</th>
-                        <th class="px-6 py-3 font-medium">Filename</th>
-                        <th class="px-6 py-3 font-medium">Status</th>
-                        <th class="px-6 py-3 font-medium">Confidence</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 text-gray-700">
-                    {% for record in history %}
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-6 py-3">{{ record.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
-                        <td class="px-6 py-3 truncate max-w-[200px]" title="{{ record.filename }}">{{ record.filename }}</td>
-                        <td class="px-6 py-3">
-                            {% if record.is_tampered %}
-                                <span class="text-red-600 font-medium">Tampered</span>
-                            {% else %}
-                                <span class="text-green-600 font-medium">Authentic</span>
-                            {% endif %}
-                        </td>
-                        <td class="px-6 py-3">{{ record.confidence }}%</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="4" class="px-6 py-6 text-center text-gray-500">No scans recorded yet.</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="bg-slate-50/75 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[11px] font-semibold transition-colors">
+                            <th class="px-6 py-3.5">Timestamp (UTC)</th>
+                            <th class="px-6 py-3.5">Document File</th>
+                            <th class="px-6 py-3.5 text-center">Status</th>
+                            <th class="px-6 py-3.5 text-right">Confidence Score</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50 text-slate-600 dark:text-slate-300 transition-colors">
+                        {% for record in history %}
+                        <tr class="audit-row hover:bg-slate-50/80 dark:hover:bg-slate-700/50 transition-colors" data-status="{{ 'tampered' if record.is_tampered else 'authentic' }}" data-filename="{{ record.filename | lower }}">
+                            <td class="px-6 py-3.5 font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap transition-colors">{{ record.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                            <td class="px-6 py-3.5 font-medium text-slate-800 dark:text-slate-200 truncate max-w-xs transition-colors" title="{{ record.filename }}">{{ record.filename }}</td>
+                            <td class="px-6 py-3.5 text-center whitespace-nowrap">
+                                {% if record.is_tampered %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-800 transition-colors"><span class="h-1.5 w-1.5 rounded-full bg-rose-500"></span>Tampered</span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 transition-colors"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Authentic</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-3.5 text-right font-mono font-semibold text-slate-800 dark:text-slate-200 transition-colors">{{ "%.2f"|format(record.confidence) }}%</td>
+                        </tr>
+                        {% else %}
+                        <tr id="empty-history-row"><td colspan="4" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No previous scans found in audit database.</td></tr>
+                        {% endfor %}
+                        <tr id="no-search-results-row" class="hidden"><td colspan="4" class="px-6 py-8 text-center text-slate-400 dark:text-slate-500 transition-colors">No records match the current filter criteria.</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
 
     </main>
+
+    <!-- Theme & UI Scripts -->
+    <script>
+        // Theme Toggle Logic
+        const themeToggleDarkIcon = document.getElementById('theme-toggle-dark-icon');
+        const themeToggleLightIcon = document.getElementById('theme-toggle-light-icon');
+        if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            themeToggleLightIcon.classList.remove('hidden');
+        } else {
+            themeToggleDarkIcon.classList.remove('hidden');
+        }
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            themeToggleDarkIcon.classList.toggle('hidden');
+            themeToggleLightIcon.classList.toggle('hidden');
+            if (localStorage.getItem('color-theme')) {
+                if (localStorage.getItem('color-theme') === 'light') {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                }
+            } else {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.setItem('color-theme', 'light');
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.setItem('color-theme', 'dark');
+                }
+            }
+        });
+
+        // UI Handlers
+        function handleFileSelect(input) {
+            const previewBox = document.getElementById('preview-box');
+            const uploadPrompt = document.getElementById('upload-prompt');
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('image-preview').src = e.target.result;
+                    document.getElementById('preview-filename').textContent = file.name;
+                    document.getElementById('preview-filesize').textContent = `(${(file.size / (1024 * 1024)).toFixed(2)} MB)`;
+                    uploadPrompt.classList.add('hidden');
+                    previewBox.classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function clearFileSelection() {
+            document.getElementById('pan_card').value = "";
+            document.getElementById('preview-box').classList.add('hidden');
+            document.getElementById('upload-prompt').classList.remove('hidden');
+        }
+
+        document.getElementById('inspection-form').addEventListener('submit', function(e) {
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            btn.classList.add('opacity-80', 'cursor-not-allowed');
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg><span>Analyzing Document...</span>`;
+        });
+
+        function updateSplitSlider(val) {
+            document.getElementById('slider-clip').style.width = val + '%';
+            document.getElementById('slider-divider').style.left = val + '%';
+        }
+
+        function switchInspectionView(mode) {
+            const splitContainer = document.getElementById('view-split-container');
+            const sideContainer = document.getElementById('view-side-container');
+            if (mode === 'split') {
+                splitContainer.classList.remove('hidden'); sideContainer.classList.add('hidden');
+                document.getElementById('btn-view-split').className = "px-3 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors";
+                document.getElementById('btn-view-side').className = "px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors";
+            } else {
+                splitContainer.classList.add('hidden'); sideContainer.classList.remove('hidden');
+                document.getElementById('btn-view-side').className = "px-3 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors";
+                document.getElementById('btn-view-split').className = "px-3 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors";
+            }
+        }
+
+        let currentFilter = 'all';
+        function setAuditFilter(filter) {
+            currentFilter = filter;
+            ['all', 'tampered', 'authentic'].forEach(f => {
+                document.getElementById('filter-btn-' + f).className = (f === filter) ? "px-2.5 py-1 rounded-md bg-white dark:bg-slate-700 text-slate-800 dark:text-white shadow-xs font-semibold transition-colors" : "px-2.5 py-1 rounded-md text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 transition-colors";
+            });
+            filterTable();
+        }
+
+        function filterTable() {
+            const query = document.getElementById('audit-search').value.toLowerCase().trim();
+            const rows = document.querySelectorAll('.audit-row');
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const matchesStatus = (currentFilter === 'all' || row.getAttribute('data-status') === currentFilter);
+                const matchesQuery = (query === '' || row.getAttribute('data-filename').includes(query));
+                if (matchesStatus && matchesQuery) { row.style.display = ''; visibleCount++; } 
+                else { row.style.display = 'none'; }
+            });
+            const noResults = document.getElementById('no-search-results-row');
+            if (noResults) { noResults.classList.toggle('hidden', visibleCount > 0 || rows.length === 0); }
+        }
+    </script>
 </body>
 </html>
